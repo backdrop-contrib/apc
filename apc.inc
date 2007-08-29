@@ -3,11 +3,11 @@
 
 global $apc_page_stats;
 $apc_page_stats = array (
-  'get' 	=> 0,
-  'set' 	=> 0,
-  'hit' 	=> 0,
-  'miss'	=> 0,
-  'delete'	=> 0,
+  'get'       => 0,
+  'set'       => 0,
+  'hit'       => 0,
+  'miss'      => 0,
+  'delete'    => 0,
 );
 
 
@@ -21,44 +21,12 @@ $apc_page_stats = array (
  *   'cache_menu', 'cache_page', or 'cache' for the default cache.
  */
 function cache_get($cid, $bin = 'cache') {
-  global $user;
-
-  $cache = apc_handle_get($cid, $bin);
-  if(!is_object($cache)) {
-    /* Garbage collection necessary when enforcing a minimum cache lifetime
-     * This only affects the database, not apc data cache
-     */
-    $cache_flush = variable_get('cache_flush', 0);
-    if($cache_flush && ($cache_flush + variable_get('cache_lifetime', 0) <= time())) { 
-      db_query("DELETE FROM {%s} WHERE expire != %d AND expire <= %d", $bin, CACHE_PERMANENT, $cache_flush);  
-      variable_set('cache_flush', 0);
-    }
-    // Load cache object from database
-    $cache = db_fetch_object(db_query("SELECT data, created, headers, expire FROM {%s} WHERE cid = '%s'", $bin, $cid));  
-    if(is_object($cache) && isset($cache->data)) {       
-      $cache->data = unserialize(db_decode_blob($cache->data));
-      // Need to add it to memcache in the event of a memcache server disappearing and coming back
-      apc_handle_set($cid,$cache, $cache->expire, $bin);
-    }
-  } 
-
-  if ($cache->data) {
-    if ($cache->expire != CACHE_PERMANENT || variable_get('cache_lifetime', 0)) {
-      if ($user->cache > $cache->created) {
-        return 0;
-      }
-    }
-
-    return $cache;
-  }
-  return 0;
-}
-
+  return apc_handle_get($cid, $bin);
 }
 
 /**
  * Store data in the persistent cache.
- 
+ *
  * @param $cid
  *   The cache ID of the data to store.
  * @param $bin
@@ -77,7 +45,7 @@ function cache_get($cid, $bin = 'cache') {
  * @param $headers
  *   A string containing HTTP header information for cached pages.
  */
-function cache_set($cid, $bin = 'cache', $data, $expire = CACHE_PERMANENT, $headers = NULL) {
+function cache_set($cid, $data, $bin = 'cache', $expire = CACHE_PERMANENT, $headers = NULL) {
   // Create new cache object.
   $cache = new stdClass;
   $cache->cid = $cid;
@@ -88,12 +56,7 @@ function cache_set($cid, $bin = 'cache', $data, $expire = CACHE_PERMANENT, $head
   
   // If error on set, add it to the database cache
   if(!apc_handle_set($cid, $cache, $expire, $bin)) {
-    db_lock_table($table);
-    db_query("UPDATE {%s} SET data = %b, created = %d, expire = %d, headers = '%s' WHERE cid = '%s'", $table, serialize($data), time(), $expire, $headers, $cid);
-    if (!db_affected_rows()) {
-      db_query("INSERT INTO {%s} (cid, data, created, expire, headers) VALUES ('%s', %b, %d, %d, '%s')", $table, $cid, serialize($data), time(), $expire, $headers);
-    }
-    db_unlock_tables();
+    watchdog("Unable to set apc cache: $bin -> $cid", WATCHDOG_ERROR);
   }
 }
 
@@ -119,18 +82,20 @@ function apc_handle_get($key, $bin = 'cache') {
   global $apc_page_stats;
   $apc_page_stats['get']++;
   
-  $full_key = apc_handle_key($key, $bin)
+  $full_key = apc_handle_key($key, $bin);
+  
   if (isset($full_key)) {
-    if (!$return = apc_fetch($full_key)) {  
+    $return = apc_fetch($full_key);
+    if ($return === FALSE) {  
       watchdog('apc', 'Failed to get key: ' . $full_key, WATCHDOG_ERROR);
       $return = FALSE;
     }
     else {
-      $apc_page_stats['hits']++;
+      $apc_page_stats['hit']++;
     }
   }
   else {
-  	$apc_page_stats['miss']++;
+        $apc_page_stats['miss']++;
     $return = FALSE; 
   }
   
@@ -138,7 +103,8 @@ function apc_handle_get($key, $bin = 'cache') {
 }
 
 /**
- * Set data into apc cache
+ * Set data into apc cache.  We have to keep track of the bins ourselves since apc doesn't have the concept
+ * of "bins".  So we keep a lookup table hash to be able to clear a single bin via flush.
  *
  * @param $key
  *   The key of the data to retrieve.
@@ -150,15 +116,36 @@ function apc_handle_set($key, $data, $expire = CACHE_PERMENANT, $bin = 'cache') 
   $apc_page_stats['set']++;
   
   if (!empty($key) && !empty($data)) {
+    if (!apc_get_lock($bin)) {
+      watchdog('apc', 'Unable to get lock for bin: ' . $bin, WATCHDOG_ERROR);
+      return FALSE;
+    }
+    
+    // Get lookup table to be able to keep track of bins
+    $lookup = apc_fetch('apc_lookup_' . $bin);
+    
+    // If the lookup table is empty, initialize table
+    if (empty($lookup)) {
+      $lookup = array();
+    }
+    
+    // Get full key for storage and set it to 1 so we can keep track of the bin
     $full_key = apc_handle_key($key, $bin);
-    if (!apc_store($full_key, $value, $expire)) {
-      watchdog('memcache', 'Failed to set key: ' . $full_key, WATCHDOG_ERROR);
+    $lookup[$full_key] = 1;
+    
+    // Attempt to store full key and value
+    if (!apc_store($full_key, $data, $expire)) {
+      unset($lookup[$full_key]);
       $return = FALSE;
     }
     else {
       $return = TRUE;
     }
   }
+  // Resave the lookup table (even on failure)
+  apc_store('apc_lookup_' . $bin, $lookup);
+  
+  apc_remove_lock($bin);
   
   return $return;
 }
@@ -178,7 +165,7 @@ function apc_handle_delete($key, $bin = 'cache') {
   if (!empty($key) && !empty($data)) {
     $full_key = apc_handle_key($key, $bin);
     if (!apc_delete($full_key)) {
-      watchdog('memcache', 'Failed to delete key: ' . $full_key, WATCHDOG_ERROR);
+      watchdog('apc', 'Failed to delete key: ' . $full_key, WATCHDOG_ERROR);
       $return = FALSE;
     }
     else {
@@ -196,7 +183,37 @@ function apc_handle_delete($key, $bin = 'cache') {
  *   The bin/silo to look in. 
  */
 function apc_handle_flush($bin = 'cache') {
-  return apc_clear_cache('user');
+  if (!apc_get_lock($bin)) {
+    watchdog('apc', 'Unable to get lock for bin: ' . $bin, WATCHDOG_ERROR);
+    return FALSE;
+  }
+  
+  // Get lookup table to be able to keep track of bins
+  $lookup = apc_fetch('apc_lookup_' . $bin);
+  
+  // If the lookup table is empty, remove lock and return
+  if (empty($lookup)) {
+    apc_remove_lock($bin);
+    return TRUE;
+  }
+  
+  // Cycle through keys and remove each entry from the cache
+  foreach ($lookup as $key => $val) {
+    if (!apc_delete($key)) {
+      watchdog('apc', "Unable to remove $key from $bin");
+    }
+    else {
+      unset($lookup[$key]);
+    }
+  }
+  
+  // Resave the lookup table (even on failure)
+  apc_store('apc_lookup_' . $bin, $lookup);
+  
+  // Remove lock
+  apc_remove_lock($bin);
+  
+  return TRUE;
 }
 
 /**
@@ -224,9 +241,19 @@ function apc_handle_key($key, $bin) {
   static $prefix;
 
   if (empty($prefix)) {
-    $prefix = variable_get('memcache_key_prefix', '');
+    $prefix = variable_get('apc_key_prefix', '');
   }
   $full_key = ($prefix ? $prefix . '-' : '') . $bin . '-' . $key;
   
   return urlencode($full_key);
+}
+
+function apc_get_lock($bin) {
+  apc_store('apc_lock_' . $bin, TRUE);
+  return TRUE;
+}
+
+function apc_remove_lock($bin) {
+  // Remove lock
+  apc_delete('apc_lock_' . $bin); 
 }
