@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 global $apc_page_stats;
 $apc_page_stats = array (
@@ -21,7 +20,11 @@ $apc_page_stats = array (
  *   'cache_menu', 'cache_page', or 'cache' for the default cache.
  */
 function cache_get($cid, $bin = 'cache') {
-  return apc_handle_get($cid, $bin);
+  $cache = apc_handle_get($cid, $bin);
+  if (is_object($cache) && $cache->serialized) {
+    $cache->data = unserialize($cache->data);
+  }
+  return $cache;
 }
 
 /**
@@ -49,13 +52,20 @@ function cache_set($cid, $data, $bin = 'cache', $expire = CACHE_PERMANENT, $head
   // Create new cache object.
   $cache = new stdClass;
   $cache->cid = $cid;
-  $cache->data = $data;
   $cache->created = time();
   $cache->expire = $expire;
   $cache->headers = $headers;
-  
+  if (is_array($data) || is_object($data)) {
+    $cache->serialized = TRUE;
+    $cache->data = serialize($data);
+  }
+  else {  
+    $cache->serialized = FALSE;
+    $cache->data = $data;
+  }
+
   // If error on set, add it to the database cache
-  if(!apc_handle_set($cid, $cache, $expire, $bin)) {
+  if (!apc_handle_set($cid, $cache, $expire, $bin)) {
     watchdog("Unable to set apc cache: $bin -> $cid", WATCHDOG_ERROR);
   }
 }
@@ -83,7 +93,6 @@ function apc_handle_get($key, $bin = 'cache') {
   $apc_page_stats['get']++;
   
   $full_key = apc_handle_key($key, $bin);
-  
   if (isset($full_key)) {
     $return = apc_fetch($full_key);
     if ($return === FALSE) {  
