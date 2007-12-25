@@ -71,7 +71,7 @@ function cache_set($cid, $data, $bin = 'cache', $expire = CACHE_PERMANENT, $head
 }
 
 function cache_clear_all($cid = NULL, $bin = NULL, $wildcard = FALSE) {
-  $table = empty($table) ? 'cache' : $table;
+  $table = empty($bin) ? 'cache' : $bin;
   if (empty($cid)) {
     apc_handle_flush($table);
   }
@@ -171,7 +171,7 @@ function apc_handle_delete($key, $bin = 'cache') {
   global $apc_page_stats;
   $apc_page_stats['delete']++;
   
-  if (!empty($key) && !empty($data)) {
+  if (!empty($key) ) {
     $full_key = apc_handle_key($key, $bin);
     if (!apc_delete($full_key)) {
       watchdog('apc', 'Failed to delete key: ' . $full_key, WATCHDOG_ERROR);
@@ -247,22 +247,49 @@ function apc_handle_stats($bin = 'cache') {
  *   The bin/silo to look in. 
  */
 function apc_handle_key($key, $bin) {
-  static $prefix;
+  static $apc_key_prefix;
+  global $db_prefix; //This is set in settings.php
 
   if (empty($prefix)) {
-    $prefix = variable_get('apc_key_prefix', '');
+    $apc_key_prefix = variable_get('apc_key_prefix', '');
   }
-  $full_key = ($prefix ? $prefix . '-' : '') . $bin . '-' . $key;
+  
+  if (is_array($db_prefix) ) {
+    if ($db_prefix($bin)) {
+      $prefix = $db_prefix($bin);
+    }
+  }
+  else {
+    if (!empty($db_prefix)) {
+      $prefix = $db_prefix;
+    }
+  }
+  
+  $full_key = ($apc_key_prefix ? $apc_key_prefix . '_' : '') . ($prefix ? $prefix . '_' : '') . $bin . '-' . $key;
   
   return urlencode($full_key);
 }
 
+/**
+ * Handle locking of table for other processes
+ *
+ * @param $bin
+ *   The bin/silo to lock. 
+ */
 function apc_get_lock($bin) {
-  apc_store('apc_lock_' . $bin, TRUE);
+	//TODO: Actually do something usefull here
+  //apc_store('apc_lock_' . $bin, TRUE);
   return TRUE;
 }
 
+/**
+ * Handle unlocking of table for other processes
+ *
+ * @param $bin
+ *   The bin/silo to unlock. 
+ */
 function apc_remove_lock($bin) {
   // Remove lock
-  apc_delete('apc_lock_' . $bin); 
+  //TODO: Actually do something usefull here
+  //apc_delete('apc_lock_' . $bin); 
 }
