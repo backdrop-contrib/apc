@@ -181,7 +181,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
 
     for ($i = 0; $i < $count; $i++) {
       if (strpos($data['cache_list'][$i]['info'], $this->binKey()) !== FALSE) {
-        $cache = apc_get($data['cache_list'][$i]['info']);
+        $cache = apc_fetch($data['cache_list'][$i]['info']);
         if ($cache->expire == CACHE_TEMPORARY) {
           apc_delete($data['cache_list'][$i]['info']);
         }
