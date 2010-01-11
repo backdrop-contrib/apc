@@ -1,0 +1,8 @@
+; $Id$
+name = Alternative PHP Cache
+description = Enables the Alternative PHP Cache.
+package = Caching
+version = VERSION
+core = 7.x
+files[] = apc.module
+files[] = drupal_apc_cache.inc
