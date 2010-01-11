@@ -246,4 +246,10 @@ class DrupalAPCCache implements DrupalCacheInterface {
       }
     }
   }
+
+  function isEmpty() {
+    // @todo, implement a proper solution.
+    // We do not know so err on the safe side?
+    return FALSE;
+  }
 }
