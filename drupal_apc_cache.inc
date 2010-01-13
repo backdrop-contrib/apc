@@ -5,6 +5,7 @@
  * @file
  * This integrates the drupal APC cache backend.
  */
+$apc_statistics = array();
 
 /**
  * APC cache implementation.
@@ -51,9 +52,12 @@ class DrupalAPCCache implements DrupalCacheInterface {
   function get($cid) {
     // Garbage collection necessary when enforcing a minimum cache lifetime.
     $this->garbageCollection($this->bin);
+    
+    // Add a get to our statistics.
+    $GLOBALS['apc_statistics'][] = array('get', $this->bin, $cid, 0);
 
+    // Fetch the data.
     $cache = apc_fetch($this->key($cid));
-
     return $this->prepareItem($cache);
   }
 
@@ -96,6 +100,10 @@ class DrupalAPCCache implements DrupalCacheInterface {
     if (isset($cache->headers)) {
       $cache->headers = unserialize($cache->headers);
     }
+    
+    // We got a hit, add it to the statistics.
+    end($GLOBALS['apc_statistics']);
+    $GLOBALS['apc_statistics'][key($GLOBALS['apc_statistics'])][3] = 1;
 
     return $cache;
   }
@@ -138,6 +146,9 @@ class DrupalAPCCache implements DrupalCacheInterface {
   }
 
   function set($cid, $data, $expire = CACHE_PERMANENT, array $headers = NULL) {
+    // Add set to statistics.
+    $GLOBALS['apc_statistics'][] = array('set', $this->bin, $cid, '');
+
     // Create new cache object.
     $cache = new stdClass();
     $cache->cid = $cid;
@@ -192,6 +203,9 @@ class DrupalAPCCache implements DrupalCacheInterface {
   function clear($cid = NULL, $wildcard = FALSE) {
     global $user;
 
+    // Add a get to our statistics.
+    $GLOBALS['apc_statistics'][] = array('clear', $this->bin, $cid, (int)$wildcard);
+    
     if (empty($cid)) {
       if (variable_get('cache_lifetime', 0)) {
         // We store the time in the current user's $user->cache variable which
@@ -248,8 +262,15 @@ class DrupalAPCCache implements DrupalCacheInterface {
   }
 
   function isEmpty() {
-    // @todo, implement a proper solution.
-    // We do not know so err on the safe side?
-    return FALSE;
+    $data = apc_cache_info('user');
+    $count = count($data['cache_list']);
+
+    for ($i = 0; $i < $count; $i++) {
+      if (strpos($data['cache_list'][$i]['info'], $this->binKey()) !== FALSE) {
+        return FALSE;
+      }
+    }
+
+    return TRUE;
   }
 }
