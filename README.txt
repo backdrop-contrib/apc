@@ -31,6 +31,18 @@ $conf['cache_backends'] = array('sites/all/modules/apc/drupal_apc_cache.inc');
 $conf['cache_default_class'] = 'DrupalAPCCache';
 //$conf['apc_show_debug'] = TRUE;  // Remove the slashes to use debug mode.
 
-
 - Step 3
 Visit your site to see or it's still working!
+
+- Step 4 (OPTIONAL)
+When using DrupalAPCCache as default or manually caching the 'cache_page' bin
+in your settings file you do not need to start the database because Drupal can
+use the APC cache for pages. Add the following code to your settings.php file
+to do so:
+
+$conf['page_cache_without_database'] = TRUE;
+$conf['page_cache_invoke_hooks'] = FALSE;
+
+- Step 5 (OPTIONAL)
+Visit your site to see or it's still working!
+
