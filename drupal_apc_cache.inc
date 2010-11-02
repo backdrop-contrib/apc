@@ -159,7 +159,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
     $cache->expire = $expire;
     $cache->headers = isset($headers) ? serialize($headers) : NULL;
 
-    if (!is_string($data)) {
+    if (is_object($data)) {
       $cache->serialized = 1;
       $cache->data = serialize($data);
     }
