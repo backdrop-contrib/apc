@@ -152,7 +152,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
     $GLOBALS['apc_statistics'][] = array('set', $this->bin, $cid, '');
 
     // Create new cache object.
-    $cache = new stdCLass();
+    $cache = new stdClass();
     $cache->cid = $cid;
     $cache->serialized = 0;
     $cache->created = REQUEST_TIME;

@@ -57,4 +57,6 @@ Visit your site to see or it's still working!
  * 2. Testing
  ****************/
 To be able to test this module open DRUPAL_ROOT/includes/cache.inc and search
-for `variable_get('cache_default_class', 'DrupalDatabaseCache')`. 
+for `variable_get('cache_default_class', 'DrupalDatabaseCache')`. and change
+this to DrupalAPCCache. This is because the $conf[''] array in settings.php
+is not always loaded properly.
