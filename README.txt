@@ -1,3 +1,9 @@
+1. Installation
+2. Testing
+
+/*****************
+ * 1. Installation
+ ****************/
 - Step 1
 Enable the module and make sure the APC extension is installed properly on
 the status page (http://yoursite/admin/reports/status).
@@ -46,3 +52,9 @@ $conf['page_cache_invoke_hooks'] = FALSE;
 - Step 5 (OPTIONAL)
 Visit your site to see or it's still working!
 
+
+/*****************
+ * 2. Testing
+ ****************/
+To be able to test this module open DRUPAL_ROOT/includes/cache.inc and search
+for `variable_get('cache_default_class', 'DrupalDatabaseCache')`. 

@@ -29,12 +29,14 @@ class DrupalAPCCache implements DrupalCacheInterface {
    */
   private function binKey() {
     static $binKey = array();
-    if (!isset($binKey[$this->bin])) {
-      global $db_prefix;
 
-      $binKey[$this->bin] = $_SERVER['HTTP_HOST'] . (!empty($db_prefix) ? ('_' . $db_prefix) : '') . '|' . $this->bin . '|';
+    $test_info = &$GLOBALS['drupal_test_info'];
+    $bin = (!empty($test_info['test_run_id']) ? ('_' . $test_info['test_run_id']) : '') . $this->bin;
+
+    if (!isset($binKey[$bin])) {
+      $binKey[$bin] = $_SERVER['HTTP_HOST'] . '|' . $bin . '|';
     }
-    return $binKey[$this->bin];
+    return $binKey[$bin];
   }
 
   /**
@@ -52,7 +54,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
   function get($cid) {
     // Garbage collection necessary when enforcing a minimum cache lifetime.
     $this->garbageCollection($this->bin);
-    
+
     // Add a get to our statistics.
     $GLOBALS['apc_statistics'][] = array('get', $this->bin, $cid, 0);
 
@@ -100,7 +102,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
     if (isset($cache->headers)) {
       $cache->headers = unserialize($cache->headers);
     }
-    
+
     // We got a hit, add it to the statistics.
     end($GLOBALS['apc_statistics']);
     $GLOBALS['apc_statistics'][key($GLOBALS['apc_statistics'])][3] = 1;
@@ -150,7 +152,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
     $GLOBALS['apc_statistics'][] = array('set', $this->bin, $cid, '');
 
     // Create new cache object.
-    $cache = new stdClass();
+    $cache = new stdCLass();
     $cache->cid = $cid;
     $cache->serialized = 0;
     $cache->created = REQUEST_TIME;
@@ -191,9 +193,9 @@ class DrupalAPCCache implements DrupalCacheInterface {
     $count = count($data['cache_list']);
 
     for ($i = 0; $i < $count; $i++) {
-      if (strpos($data['cache_list'][$i]['info'], $this->binKey()) !== FALSE) {
+      if (strpos($data['cache_list'][$i]['info'], $this->binKey()) === 0) {
         $cache = apc_fetch($data['cache_list'][$i]['info']);
-        if ($cache->expire == CACHE_TEMPORARY) {
+        if ($cache && $cache->expire == CACHE_TEMPORARY) {
           apc_delete($data['cache_list'][$i]['info']);
         }
       }
@@ -205,7 +207,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
 
     // Add a get to our statistics.
     $GLOBALS['apc_statistics'][] = array('clear', $this->bin, $cid, (int)$wildcard);
-    
+
     if (empty($cid)) {
       if (variable_get('cache_lifetime', 0)) {
         // We store the time in the current user's $user->cache variable which
@@ -237,14 +239,14 @@ class DrupalAPCCache implements DrupalCacheInterface {
 
         if ($cid == '*') {
           for ($i = 0; $i < $count; $i++) {
-            if (strpos($data['cache_list'][$i]['info'], $this->binKey()) !== FALSE) {
+            if (strpos($data['cache_list'][$i]['info'], $this->binKey()) === 0) {
               apc_delete($data['cache_list'][$i]['info']);
             }
           }
         }
         else {
           for ($i = 0; $i < $count; $i++) {
-            if (strpos($data['cache_list'][$i]['info'], $this->key($cid)) !== FALSE) {
+            if (strpos($data['cache_list'][$i]['info'], $this->key($cid)) === 0) {
               apc_delete($data['cache_list'][$i]['info']);
             }
           }
@@ -266,7 +268,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
     $count = count($data['cache_list']);
 
     for ($i = 0; $i < $count; $i++) {
-      if (strpos($data['cache_list'][$i]['info'], $this->binKey()) !== FALSE) {
+      if (strpos($data['cache_list'][$i]['info'], $this->binKey()) === 0) {
         return FALSE;
       }
     }
