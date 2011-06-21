@@ -35,26 +35,6 @@ function apc_permission() {
 }
 
 /**
- * Implementation of hook_requirements().
- */
-function apc_requirements($phase) {
-  $requirements = array();
-  // Ensure translations don't break at install time
-  $t = get_t();
-
-  // Test APC.
-  $apc_version = phpversion('apc');
-  $requirements['apc'] = array(
-    'title' => $t('APC'),
-    'value' => empty($apc_version) ? $t('Not available') : $apc_version,
-    'description' => $t('The APC module needs the apc extension see: http://www.php.net/apc.'),
-    'severity' => empty($apc_version) ? REQUIREMENT_ERROR : REQUIREMENT_OK,
-  );
-
-  return $requirements;
-}
-
-/**
  * See apc_init() which registers this function as a shutdown function.
  * Displays apc stats in the footer.
  */
