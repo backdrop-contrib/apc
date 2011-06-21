@@ -2,7 +2,7 @@
 
 /**
  * Implementation of hook_init().
- * 
+ *
  * Used for displaying the APC stats for debug purposes.
  */
 function apc_init() {
@@ -13,7 +13,7 @@ function apc_init() {
       || strstr($_GET['q'], 'autocomplete')) {
     return;
   }
-  
+
   register_shutdown_function('apc_shutdown');
 }
 
@@ -47,9 +47,14 @@ function apc_shutdown() {
   }
 
   print '<div id="apc-devel"><h2>' . t('APC statistics') . '</h2>';
+  $rows = array();
+  foreach ($apc_statistics as $row) {
+    $row[2] = implode(',<br />', $row[2]);
+    $rows[] = $row;
+  }
   print theme('table', array(
-    'header' => array(('Type'), t('Bin'), t('Cid'), t('Hit / Wildcard')),
-    'rows' => $apc_statistics
+    'header' => array(('Type'), t('Bin'), t('Cid(s)')),
+    'rows' => $rows,
   ));
   print '</div>';
 }

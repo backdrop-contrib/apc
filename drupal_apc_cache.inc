@@ -55,7 +55,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
     $this->garbageCollection($this->bin);
 
     // Add a get to our statistics.
-    $GLOBALS['apc_statistics'][] = array('get', $this->bin, $cid, 0);
+    $GLOBALS['apc_statistics'][] = array('get', $this->bin, array($cid));
 
     // Fetch the data.
     $cache = apc_fetch($this->key($cid));
@@ -102,10 +102,6 @@ class DrupalAPCCache implements DrupalCacheInterface {
       $cache->headers = unserialize($cache->headers);
     }
 
-    // We got a hit, add it to the statistics.
-    end($GLOBALS['apc_statistics']);
-    $GLOBALS['apc_statistics'][key($GLOBALS['apc_statistics'])][3] = 1;
-
     return $cache;
   }
 
@@ -113,14 +109,21 @@ class DrupalAPCCache implements DrupalCacheInterface {
     // Garbage collection necessary when enforcing a minimum cache lifetime.
     $this->garbageCollection($this->bin);
 
-    $cache = array();
+    // We need to search the cache with the proper keys and
+    // be able to get the original $cid back.
     foreach ($cids as $cid) {
-      $item = $this->get($cid);
-
-      if ($item) {
-        $cache[$cid] = $item;
-      }
+      $keys[$this->key($cid)] = $cid;
     }
+
+    $fetch = apc_fetch(array_keys($keys));
+    $cache = array();
+    foreach ($fetch as $key => $data) {
+      $cache[$keys[$key]] = $this->prepareItem($fetch[$key]);
+    }
+    unset($fetch);
+
+    // Add a get to our statistics.
+    $GLOBALS['apc_statistics'][] = array('get', $this->bin, $cids);
 
     $cids = array_diff($cids, array_keys($cache));
 
@@ -148,7 +151,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
 
   function set($cid, $data, $expire = CACHE_PERMANENT, array $headers = NULL) {
     // Add set to statistics.
-    $GLOBALS['apc_statistics'][] = array('set', $this->bin, $cid, '');
+    $GLOBALS['apc_statistics'][] = array('set', $this->bin, $cid);
 
     // Create new cache object.
     $cache = new stdClass();
