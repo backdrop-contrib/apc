@@ -93,7 +93,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
     // timer. The cache variable is loaded into the $user object by _drupal_session_read()
     // in session.inc. If the data is permanent or we're not enforcing a minimum
     // cache lifetime always return the cached data.
-    if ($cache->expire != CACHE_PERMANENT && variable_get('cache_lifetime', 0) && $user->cache > $cache->created) {
+    if ($cache->expire != CACHE_PERMANENT && variable_get('cache_lifetime', 0) && (isset($user->cache) && $user->cache > $cache->created)) {
       // This cache data is too old and thus not valid for us, ignore it.
       return FALSE;
     }
