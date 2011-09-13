@@ -1,6 +1,6 @@
 name = Alternative PHP Cache
 description = Enables the Alternative PHP Cache.
-package = Caching
+package = Performance and scalability
 version = VERSION
 core = 7.x
 files[] = apc.module
