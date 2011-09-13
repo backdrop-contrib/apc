@@ -65,8 +65,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
   /**
    * Prepare a cached item.
    *
-   * Checks that items are either permanent or did not expire, and unserializes
-   * data as appropriate.
+   * Checks that items are either permanent or did not expire.
    *
    * @param $cache
    *   An item loaded from cache_get() or cache_get_multiple().
@@ -80,13 +79,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
     if (!isset($cache->data)) {
       return FALSE;
     }
-    // If the data is permanent or we are not enforcing a minimum cache lifetime
-    // always return the cached data.
-    if ($cache->expire == CACHE_PERMANENT || !variable_get('cache_lifetime', 0)) {
-      if ($cache->serialized) {
-        $cache->data = unserialize($cache->data);
-      }
-    }
+
     // If enforcing a minimum cache lifetime, validate that the data is
     // currently valid for this user before we return it by making sure the cache
     // entry was created before the timestamp in the current session's cache
@@ -96,10 +89,6 @@ class DrupalAPCCache implements DrupalCacheInterface {
     if ($cache->expire != CACHE_PERMANENT && variable_get('cache_lifetime', 0) && (isset($user->cache) && $user->cache > $cache->created)) {
       // This cache data is too old and thus not valid for us, ignore it.
       return FALSE;
-    }
-
-    if (isset($cache->headers)) {
-      $cache->headers = unserialize($cache->headers);
     }
 
     return $cache;
@@ -156,18 +145,13 @@ class DrupalAPCCache implements DrupalCacheInterface {
     // Create new cache object.
     $cache = new stdClass();
     $cache->cid = $cid;
+    // APC will serialize any structure we give itself.
     $cache->serialized = 0;
     $cache->created = REQUEST_TIME;
     $cache->expire = $expire;
-    $cache->headers = isset($headers) ? serialize($headers) : NULL;
+    $cache->headers = isset($headers) ? $headers : NULL;
 
-    if (is_object($data)) {
-      $cache->serialized = 1;
-      $cache->data = serialize($data);
-    }
-    else {
-      $cache->data = $data;
-    }
+    $cache->data = $data;
 
     // What kind of expiration is being used.
     switch ($expire) {
