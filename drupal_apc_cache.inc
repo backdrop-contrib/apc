@@ -1,9 +1,22 @@
 <?php
-
 /**
  * @file
  * This integrates the drupal APC cache backend.
  */
+
+// The cli mode does not run the same php.ini file and could not have
+// loaded the apc functions. Create dummy's to prevent fatal errors.
+if (drupal_is_cli() && !function_exists('apc_fetch')) {
+  function apc_fetch($key, $success = NULL) {
+    return FALSE;
+  }
+
+  function apc_store($key, $var, $ttl = 0) {
+    return FALSE;
+  }
+}
+
+// Array to store statistics about the current page apc calls.
 $apc_statistics = array();
 
 /**
@@ -242,6 +255,11 @@ class DrupalAPCCache implements DrupalCacheInterface {
 
   function clear($cid = NULL, $wildcard = FALSE) {
     global $user;
+
+    if (drupal_is_cli() && function_exists('drush_log')) {
+      drush_log($this->bin . '(' . $cid . ') was not cleared. APC cli uses a different memory storage then the webserver. For more info see: http://drupal.org/node/1278232', 'warning');
+      return;
+    }
 
     // Add a get to our statistics.
     $GLOBALS['apc_statistics'][] = array('clear', $this->bin, $cid, (int)$wildcard);
