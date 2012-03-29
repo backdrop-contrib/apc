@@ -46,15 +46,20 @@ function apc_shutdown() {
     return;
   }
 
-  print '<div id="apc-devel"><h2>' . t('APC statistics') . '</h2>';
-  $rows = array();
-  foreach ($apc_statistics as $row) {
-    $row[2] = implode(',<br />', $row[2]);
-    $rows[] = $row;
+  if (isset($apc_statistics) && is_array($apc_statistics)) {
+    print '<div id="apc-devel"><h2>' . t('APC statistics') . '</h2>';
+    $rows = array();
+
+    foreach ($apc_statistics as $row) {
+      if (is_array($row[2])) {
+        $row[2] = implode(',<br />', $row[2]);
+      }
+      $rows[] = $row;
+    }
+    print theme('table', array(
+      'header' => array(('Type'), t('Bin'), t('Cid(s)')),
+      'rows' => $rows,
+    ));
+    print '</div>';
   }
-  print theme('table', array(
-    'header' => array(('Type'), t('Bin'), t('Cid(s)')),
-    'rows' => $rows,
-  ));
-  print '</div>';
 }
