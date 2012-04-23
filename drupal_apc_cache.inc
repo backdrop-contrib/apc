@@ -45,34 +45,30 @@ class DrupalAPCCache implements DrupalCacheInterface {
    * @return string
    *   Can be an empty string, if no prefix set.
    */
-  protected static function getPrefixForBin($bin) {
-    if (isset($GLOBALS['drupal_test_info']) && !empty($test_info['test_run_id'])) {
-      return $test_info['test_run_id'];
-    } else {
-      $prefixes = variable_get('cache_prefix', '');
+  protected static function getPrefixSettingForBin($bin) {
+    $prefixes = variable_get('cache_prefix', '');
 
-      if (is_string($prefixes)) {
-        // Variable can be a string, which then considered as a default behavior.
-        return $prefixes;
-      }
+    if (is_string($prefixes)) {
+      // Variable can be a string, which then considered as a default behavior.
+      return $prefixes;
+    }
 
-      if (isset($prefixes[$bin])) {
-        if (FALSE !== $prefixes[$bin]) {
-          // If entry is set and not FALSE, an explicit prefix is set for the bin.
-          return $prefixes[$bin];
-        } else {
-          // If we have an explicit false, it means no prefix whatever is the
-          // default configuration.
-          return '';
-        }
+    if (isset($prefixes[$bin])) {
+      if (FALSE !== $prefixes[$bin]) {
+        // If entry is set and not FALSE, an explicit prefix is set for the bin.
+        return $prefixes[$bin];
       } else {
-        // Key is not set, we can safely rely on default behavior.
-        if (isset($prefixes['default']) && FALSE !== $prefixes['default']) {
-          return $prefixes['default'];
-        } else {
-          // When default is not set or an explicit FALSE, this means no prefix.
-          return '';
-        }
+        // If we have an explicit false, it means no prefix whatever is the
+        // default configuration.
+        return '';
+      }
+    } else {
+      // Key is not set, we can safely rely on default behavior.
+      if (isset($prefixes['default']) && FALSE !== $prefixes['default']) {
+        return $prefixes['default'];
+      } else {
+        // When default is not set or an explicit FALSE, this means no prefix.
+        return '';
       }
     }
   }
@@ -80,17 +76,29 @@ class DrupalAPCCache implements DrupalCacheInterface {
   function __construct($bin) {
     $this->bin = $bin;
 
-    $prefix = self::getPrefixForBin($this->bin);
+    // First we determine the prefix from a setting.
+    $prefix = self::getPrefixSettingForBin($this->bin);
 
+    // If we do not have a configured prefix we use the HTTP_HOST.
     if (empty($prefix) && isset($_SERVER['HTTP_HOST'])) {
       // Provide a fallback for multisite. This is on purpose not inside the
       // getPrefixForBin() function in order to decouple the unified prefix
       // variable logic and custom module related security logic, that is not
       // necessary for all backends.
-      $this->prefix = $_SERVER['HTTP_HOST'] . '_';
+      $prefix = $_SERVER['HTTP_HOST'] . '|';
     } else {
-      $this->prefix = $prefix;
+      $prefix = $prefix;
     }
+
+    // When we are in testing mode we add the test prefix.
+    if ($test_prefix = drupal_valid_test_ua()) {
+      $prefix = $test_prefix . '|' . $prefix . '|';
+    }
+    else if (isset($GLOBALS['drupal_test_info'])) {
+      $prefix = $GLOBALS['drupal_test_info']['test_run_id'] . '|' . $prefix . '|';
+    }
+
+    $this->prefix = $prefix;
   }
 
   /**
