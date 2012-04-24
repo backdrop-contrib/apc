@@ -85,17 +85,17 @@ class DrupalAPCCache implements DrupalCacheInterface {
       // getPrefixForBin() function in order to decouple the unified prefix
       // variable logic and custom module related security logic, that is not
       // necessary for all backends.
-      $prefix = $_SERVER['HTTP_HOST'] . '|';
+      $prefix = $_SERVER['HTTP_HOST'] . '::';
     } else {
-      $prefix = $prefix;
+      $prefix = $prefix . '::';
     }
 
     // When we are in testing mode we add the test prefix.
     if ($test_prefix = drupal_valid_test_ua()) {
-      $prefix = $test_prefix . '|' . $prefix . '|';
+      $prefix = $test_prefix . '::' . $prefix;
     }
     else if (isset($GLOBALS['drupal_test_info'])) {
-      $prefix = $GLOBALS['drupal_test_info']['test_run_id'] . '|' . $prefix . '|';
+      $prefix = $GLOBALS['drupal_test_info']['test_run_id'] . '::' . $prefix;
     }
 
     $this->prefix = $prefix;
@@ -108,7 +108,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
    *   The safe APC key.
    */
   private function binKey() {
-    return $this->prefix . $this->bin;
+    return $this->prefix . $this->bin . '::';
   }
 
   /**
@@ -120,13 +120,10 @@ class DrupalAPCCache implements DrupalCacheInterface {
    *   The safe APC key.
    */
   private function key($cid) {
-    return $this->binKey() . '|' . $cid;
+    return $this->binKey() . $cid;
   }
 
   function get($cid) {
-    // Garbage collection necessary when enforcing a minimum cache lifetime.
-    $this->garbageCollection($this->bin);
-
     // Add a get to our statistics.
     $GLOBALS['apc_statistics'][] = array('get', $this->bin, array($cid));
 
@@ -147,8 +144,6 @@ class DrupalAPCCache implements DrupalCacheInterface {
    *   valid item to load.
    */
   protected function prepareItem($cache) {
-    global $user;
-
     if (!isset($cache->data)) {
       return FALSE;
     }
@@ -159,6 +154,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
     // timer. The cache variable is loaded into the $user object by _drupal_session_read()
     // in session.inc. If the data is permanent or we're not enforcing a minimum
     // cache lifetime always return the cached data.
+    global $user;
     if ($cache->expire != CACHE_PERMANENT && variable_get('cache_lifetime', 0) && (isset($user->cache) && $user->cache > $cache->created)) {
       // This cache data is too old and thus not valid for us, ignore it.
       return FALSE;
@@ -168,9 +164,6 @@ class DrupalAPCCache implements DrupalCacheInterface {
   }
 
   function getMultiple(&$cids) {
-    // Garbage collection necessary when enforcing a minimum cache lifetime.
-    $this->garbageCollection($this->bin);
-
     // We need to search the cache with the proper keys and
     // be able to get the original $cid back.
     foreach ($cids as $cid) {
@@ -190,25 +183,6 @@ class DrupalAPCCache implements DrupalCacheInterface {
     $cids = array_diff($cids, array_keys($cache));
 
     return $cache;
-  }
-
-  /**
-   * Garbage collection for get() and getMultiple().
-   *
-   * @param $bin
-   *   The bin being requested.
-   */
-  protected function garbageCollection() {
-    global $user;
-
-    // Garbage collection necessary when enforcing a minimum cache lifetime.
-    $cache_flush = variable_get('cache_flush_' . $this->bin, 0);
-    if ($cache_flush && ($cache_flush + variable_get('cache_lifetime', 0) <= REQUEST_TIME)) {
-      // Reset the variable immediately to prevent a meltdown in heavy load situations.
-      variable_set('cache_flush_' . $this->bin, 0);
-      // Time to flush old cache data
-      $this->clearTemporary();
-    }
   }
 
   function set($cid, $data, $expire = CACHE_PERMANENT, array $headers = NULL) {
@@ -247,23 +221,39 @@ class DrupalAPCCache implements DrupalCacheInterface {
     }
   }
 
-  function clearTemporary() {
-    $data = apc_cache_info('user');
-    $count = count($data['cache_list']);
+ /**
+   * Escape string for raw using in a PCRE regex.
+   *
+   * @param string $unsafeString
+   *
+   * @return string
+   *   Safe string.
+   */
+  protected function escapeStringForRegex($unsafeString) {
+    return preg_replace('/[\/\.\[\]\(\)\|]/', '\\\\\\0', $unsafeString);
+  }
 
-    for ($i = 0; $i < $count; $i++) {
-      if (strpos($data['cache_list'][$i]['info'], $this->binKey()) === 0) {
-        $cache = apc_fetch($data['cache_list'][$i]['info']);
-        if ($cache && $cache->expire == CACHE_TEMPORARY) {
-          apc_delete($data['cache_list'][$i]['info']);
-        }
-      }
-    }
+  /**
+   * Delete CID matching the given prefix.
+   *
+   * @param string $prefix
+   */
+  protected function deletePrefix($prefix) {
+    $match = $this->escapeStringForRegex($this->binKey() . $prefix);
+    $iterator = new APCIterator('user', '/^' . $match . '/', APC_ITER_KEY);
+    foreach ($iterator as $key => $data) {
+      apc_delete($key);
+     }
+   }
+
+  /**
+   * Flush all cache items in a bin.
+   */
+  function flush() {
+    $this->deletePrefix('');
   }
 
   function clear($cid = NULL, $wildcard = FALSE) {
-    global $user;
-
     if (drupal_is_cli() && function_exists('drush_log')) {
       drush_log($this->bin . '(' . $cid . ') was not cleared. APC cli uses a different memory storage then the webserver. For more info see: http://drupal.org/node/1278232', 'warning');
       return;
@@ -272,53 +262,18 @@ class DrupalAPCCache implements DrupalCacheInterface {
     // Add a get to our statistics.
     $GLOBALS['apc_statistics'][] = array('clear', $this->bin, $cid, (int)$wildcard);
 
-    if (empty($cid)) {
-      if (variable_get('cache_lifetime', 0)) {
-        // We store the time in the current user's $user->cache variable which
-        // will be saved into the sessions bin by _drupal_session_write(). We then
-        // simulate that the cache was flushed for this user by not returning
-        // cached data that was cached before the timestamp.
-        $user->cache = REQUEST_TIME;
-
-        $cache_flush = variable_get('cache_flush_' . $this->bin, 0);
-        if ($cache_flush == 0) {
-          // This is the first request to clear the cache, start a timer.
-          variable_set('cache_flush_' . $this->bin, REQUEST_TIME);
-        }
-        elseif (REQUEST_TIME > ($cache_flush + variable_get('cache_lifetime', 0))) {
-          // Clear the cache for everyone, cache_lifetime seconds have
-          // passed since the first request to clear the cache.
-          $this->clearTemporary();
-          variable_set('cache_flush_' . $this->bin, 0);
-        }
-      }
-      else {
-        $this->clearTemporary();
-      }
-    }
-    else {
+    if (!empty($cid)) {
       if ($wildcard) {
-        $data = apc_cache_info('user');
-        $count = count($data['cache_list']);
-
         if ($cid == '*') {
-          for ($i = 0; $i < $count; $i++) {
-            if (strpos($data['cache_list'][$i]['info'], $this->binKey()) === 0) {
-              apc_delete($data['cache_list'][$i]['info']);
-            }
-          }
+          $this->flush();
         }
         else {
-          for ($i = 0; $i < $count; $i++) {
-            if (strpos($data['cache_list'][$i]['info'], $this->key($cid)) === 0) {
-              apc_delete($data['cache_list'][$i]['info']);
-            }
-          }
+          $this->deletePrefix($cid);
         }
       }
-      elseif (is_array($cid)) {
-        foreach ($cid as $delete_cid) {
-          apc_delete($this->key($delete_cid));
+      else if (is_array($cid)) {
+        foreach ($cid as $entry) {
+          apc_delete($this->key($entry));
         }
       }
       else {
@@ -328,15 +283,8 @@ class DrupalAPCCache implements DrupalCacheInterface {
   }
 
   function isEmpty() {
-    $data = apc_cache_info('user');
-    $count = count($data['cache_list']);
-
-    for ($i = 0; $i < $count; $i++) {
-      if (strpos($data['cache_list'][$i]['info'], $this->binKey()) === 0) {
-        return FALSE;
-      }
-    }
-
-    return TRUE;
+    $match = $this->escapeStringForRegex($this->binKey());
+    $iterator = new APCIterator('user', '/^' . $match . '/', APC_ITER_KEY);
+    return 0 === $iterator->getTotalCount();
   }
 }
