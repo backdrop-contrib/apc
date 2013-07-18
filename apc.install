@@ -10,11 +10,12 @@ function apc_requirements($phase) {
 
   // Test APC.
   $apc_enabled = (function_exists('apc_cache_info') && ($cache = @apc_cache_info('user', TRUE)));
+  $meets_version = version_compare(phpversion('apc'), '3.1.1')>= 0;
 
   $requirements['apc'] = array(
     'title' => $t('APC'),
-    'value' => $apc_enabled ? phpversion('apc') : $t('Not available'),
-    'severity' => $apc_enabled ? ($cache['num_entries'] ? REQUIREMENT_OK : REQUIREMENT_WARNING) : REQUIREMENT_ERROR,
+    'value' => $apc_enabled ? ($meets_version ? phpversion('apc') : $t('APC needs version >=3.1.1')) : $t('Not available'),
+    'severity' => $apc_enabled && $meets_version ? ($cache['num_entries'] ? REQUIREMENT_OK : REQUIREMENT_WARNING) : REQUIREMENT_ERROR,
   );
 
   if ($apc_enabled) {
