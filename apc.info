@@ -1,7 +1,6 @@
-name = Alternative PHP Cache
+name = APC - Alternative PHP Cache
 description = Enables the Alternative PHP Cache.
 package = Performance and scalability
-version = VERSION
 core = 7.x
 files[] = apc.module
 files[] = drupal_apc_cache.inc
