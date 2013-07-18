@@ -14,7 +14,7 @@ function apc_requirements($phase) {
   $requirements['apc'] = array(
     'title' => $t('APC'),
     'value' => $apc_enabled ? phpversion('apc') : $t('Not available'),
-    'severity' => $apc_enabled ? REQUIREMENT_OK : REQUIREMENT_ERROR,
+    'severity' => $apc_enabled ? ($cache['num_entries'] ? REQUIREMENT_OK : REQUIREMENT_WARNING) : REQUIREMENT_ERROR,
   );
 
   if ($apc_enabled) {
