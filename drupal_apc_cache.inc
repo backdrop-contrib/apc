@@ -254,7 +254,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
 
   function clear($cid = NULL, $wildcard = FALSE) {
     if (drupal_is_cli() && function_exists('drush_log')) {
-      drush_log($this->bin . '(' . $cid . ') was not cleared. APC cli uses a different memory storage then the webserver. For more info see: http://drupal.org/node/1278232', 'warning');
+      drush_log($this->bin . '(' . $cid . ') was not cleared. APC cli uses a different memory storage than the webserver. For more info see: http://drupal.org/node/1278232', 'warning');
       return;
     }
 
