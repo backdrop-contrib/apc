@@ -4,9 +4,8 @@
  * This integrates the drupal APC cache backend.
  */
 
-// The cli mode does not run the same php.ini file and could not have
-// loaded the apc functions. Create dummy's to prevent fatal errors.
-if (drupal_is_cli() && !function_exists('apc_fetch')) {
+// Create dummy functions to prevent fatal errors.
+if (!function_exists('apc_fetch')) {
   function apc_fetch($key, $success = NULL) {
     return FALSE;
   }
@@ -262,7 +261,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
     // Add a get to our statistics.
     $GLOBALS['apc_statistics'][] = array('clear', $this->bin, $cid, (int)$wildcard);
 
-    if (!empty($cid)) {
+    if (!empty($cid) && class_exists('APCIterator')) {
       if ($wildcard) {
         if ($cid == '*') {
           $this->flush();
