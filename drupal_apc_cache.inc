@@ -171,8 +171,10 @@ class DrupalAPCCache implements DrupalCacheInterface {
 
     $fetch = apc_fetch(array_keys($keys));
     $cache = array();
-    foreach ($fetch as $key => $data) {
-      $cache[$keys[$key]] = $this->prepareItem($fetch[$key]);
+    if (!empty($fetch)) {
+        foreach ($fetch as $key => $data) {
+          $cache[$keys[$key]] = $this->prepareItem($fetch[$key]);
+        }
     }
     unset($fetch);
 
