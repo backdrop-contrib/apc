@@ -79,3 +79,46 @@ function apc_shutdown() {
     print '</div>';
   }
 }
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function apc_form_system_performance_settings_alter(&$form, $form_state) {
+  $form['clear_cache']['clear']['#submit'][] = 'apc_clear_user_cache';
+  $form['clear_cache']['clear']['#submit'][] = 'apc_clear_opcode_cache';
+
+  $form['clear_cache']['apc_user'] = array(
+    '#type' => 'submit',
+    '#value' => t('Clear APC user cache'),
+    '#submit' => array('apc_clear_user_cache'),
+  );
+  $form['clear_cache']['apc_opcode'] = array(
+    '#type' => 'submit',
+    '#value' => t('Clear APC opcode cache'),
+    '#submit' => array('apc_clear_opcode_cache'),
+  );
+}
+
+/**
+ * Helper function to clear user cache.
+ */
+function apc_clear_user_cache() {
+  if (apc_clear_cache('user')) {
+    drupal_set_message(t('Cleared APC user cache.'));
+  }
+  else {
+    drupal_set_message(t('Unable to clear APC user cache.'), 'error');
+  }
+}
+
+/**
+ * Helper function to clear opcode cache.
+ */
+function apc_clear_opcode_cache() {
+  if (apc_clear_cache()) {
+    drupal_set_message(t('Cleared APC opcode cache.'));
+  }
+  else {
+    drupal_set_message(t('Unable to clear APC opcode cache.'), 'error');
+  }
+}
