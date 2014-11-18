@@ -268,7 +268,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
     // Add a get to our statistics.
     $GLOBALS['apc_statistics'][] = array('clear', $this->bin, $cid, (int)$wildcard);
 
-    if (empty($cid) {
+    if (empty($cid)) {
       $this->flush();
     }
     else {
@@ -296,7 +296,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
       $iterator = new APCIterator('user', '/^\Q' . $this->binKey() . '\E/', APC_ITER_KEY);
       return 0 === $iterator->getTotalCount();
     }
-    return TRUE:
+    return TRUE;
   }
 
   public static function remoteFlush() {
