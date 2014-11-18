@@ -233,27 +233,14 @@ class DrupalAPCCache implements DrupalCacheInterface {
     }
   }
 
- /**
-   * Escape string for raw using in a PCRE regex.
-   *
-   * @param string $unsafeString
-   *
-   * @return string
-   *   Safe string.
-   */
-  protected function escapeStringForRegex($unsafeString) {
-    return preg_replace('/[\/\.\[\]\(\)\|]/', '\\\\\\0', $unsafeString);
-  }
-
   /**
    * Delete CID matching the given prefix.
    *
    * @param string $prefix
    */
   protected function deletePrefix($prefix) {
-    $match = $this->escapeStringForRegex($this->binKey() . $prefix);
     if (class_exists('APCIterator')) {
-      $iterator = new APCIterator('user', '/^' . $match . '/', APC_ITER_KEY);
+      $iterator = new APCIterator('user', '/^\Q' . $this->binKey() . $prefix . '\E/', APC_ITER_KEY);
       foreach ($iterator as $key => $data) {
         apc_delete($key);
        }
@@ -302,9 +289,8 @@ class DrupalAPCCache implements DrupalCacheInterface {
   }
 
   function isEmpty() {
-    $match = $this->escapeStringForRegex($this->binKey());
     if (class_exists('APCIterator')) {
-      $iterator = new APCIterator('user', '/^' . $match . '/', APC_ITER_KEY);
+      $iterator = new APCIterator('user', '/^\Q' . $this->binKey() . '\E/', APC_ITER_KEY);
       return 0 === $iterator->getTotalCount();
     }
     return TRUE:
