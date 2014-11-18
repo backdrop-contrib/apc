@@ -174,6 +174,9 @@ class DrupalAPCCache implements DrupalCacheInterface {
   }
 
   function getMultiple(&$cids) {
+    if (!$cids) {
+      return array();
+    }
     // We need to search the cache with the proper keys and
     // be able to get the original $cid back.
     foreach ($cids as $cid) {
