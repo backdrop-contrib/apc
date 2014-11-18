@@ -252,10 +252,12 @@ class DrupalAPCCache implements DrupalCacheInterface {
    */
   protected function deletePrefix($prefix) {
     $match = $this->escapeStringForRegex($this->binKey() . $prefix);
-    $iterator = new APCIterator('user', '/^' . $match . '/', APC_ITER_KEY);
-    foreach ($iterator as $key => $data) {
-      apc_delete($key);
-     }
+    if (class_exists('APCIterator')) {
+      $iterator = new APCIterator('user', '/^' . $match . '/', APC_ITER_KEY);
+      foreach ($iterator as $key => $data) {
+        apc_delete($key);
+       }
+    }
    }
 
   /**
@@ -276,7 +278,10 @@ class DrupalAPCCache implements DrupalCacheInterface {
     // Add a get to our statistics.
     $GLOBALS['apc_statistics'][] = array('clear', $this->bin, $cid, (int)$wildcard);
 
-    if (!empty($cid) && class_exists('APCIterator')) {
+    if (empty($cid) {
+      $this->flush();
+    }
+    else {
       if ($wildcard) {
         if ($cid == '*') {
           $this->flush();
@@ -298,8 +303,11 @@ class DrupalAPCCache implements DrupalCacheInterface {
 
   function isEmpty() {
     $match = $this->escapeStringForRegex($this->binKey());
-    $iterator = new APCIterator('user', '/^' . $match . '/', APC_ITER_KEY);
-    return 0 === $iterator->getTotalCount();
+    if (class_exists('APCIterator')) {
+      $iterator = new APCIterator('user', '/^' . $match . '/', APC_ITER_KEY);
+      return 0 === $iterator->getTotalCount();
+    }
+    return TRUE:
   }
 
   public static function remoteFlush() {
