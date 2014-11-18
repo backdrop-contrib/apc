@@ -37,6 +37,16 @@ class DrupalAPCCache implements DrupalCacheInterface {
   protected $prefix;
 
   /**
+   * @var boolean
+   */
+  protected $drush;
+
+  /**
+   * @var array
+   */
+  protected static $remoteClears = array();
+
+  /**
    * Get prefix for bin using the configuration.
    *
    * @param string $bin
@@ -74,6 +84,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
 
   function __construct($bin) {
     $this->bin = $bin;
+    $this->drush = (drupal_is_cli() && function_exists('drush_log'));
 
     // First we determine the prefix from a setting.
     $prefix = self::getPrefixSettingForBin($this->bin);
@@ -255,8 +266,10 @@ class DrupalAPCCache implements DrupalCacheInterface {
   }
 
   function clear($cid = NULL, $wildcard = FALSE) {
-    if (drupal_is_cli() && function_exists('drush_log')) {
-      drush_log($this->bin . '(' . $cid . ') was not cleared. APC cli uses a different memory storage than the webserver. For more info see: http://drupal.org/node/1278232', 'warning');
+    if ($this->drush) {
+      self::$remoteClears[$this->bin][serialize($cid)] = $wildcard;
+      // APC uses separate storage for CLI mode, bounce the clear request back
+      // into this method on all server nodes via XMLRPC.
       return;
     }
 
@@ -287,5 +300,44 @@ class DrupalAPCCache implements DrupalCacheInterface {
     $match = $this->escapeStringForRegex($this->binKey());
     $iterator = new APCIterator('user', '/^' . $match . '/', APC_ITER_KEY);
     return 0 === $iterator->getTotalCount();
+  }
+
+  public static function remoteFlush() {
+    if (!module_exists('apc')) {
+      drush_log('You need to enable the APC module for remote cache clearing to work. Run drush pm-enable apc.', 'error');
+      return;
+    }
+
+    global $base_url;
+    if (!empty(self::$remoteClears)) {
+      // optimize '*' clears.
+      $star = serialize('*');
+      foreach (self::$remoteClears as $bin => $clears) {
+        if (!empty($clears[$star])) {
+          self::$remoteClears[$bin] = array($star => TRUE);
+        }
+      }
+      $args = array(
+        'apc_drush_flush' => array(array(
+          'clears' => self::$remoteClears,
+          'cron_key' => variable_get('cron_key', 'drupal'),
+        )),
+      );
+      $uri = $base_url . '/xmlrpc.php';
+      $response = xmlrpc($uri, $args);
+
+      if ($response === FALSE) {
+        drush_log('xmlrpc() error: (' . xmlrpc_errno() . ') ' . xmlrpc_error_msg(), 'error');
+        if ($base_url == 'http://' . basename(conf_path())) {
+          drush_log('The base_url might not be set correctly try using the -l/--uri option for drush.', 'warning');
+        }
+      }
+      elseif (!$response['success']) {
+        drush_log('APC could not flush cache(s) because ' . $apc_node . ' returned code ' . $response['message'], 'error');
+      }
+      else {
+        drush_log("APC-Remote $apc_node: {$response['message']}", 'success');
+      }
+    }
   }
 }
