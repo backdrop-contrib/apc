@@ -23,7 +23,7 @@ function apc_drush_flush($variables) {
   $cron_key = isset($variables['cron_key']) ? $variables['cron_key'] : NULL;
   $clears = isset($variables['clears']) ? $variables['clears'] : array();
 
-  if (empty($cron_key) || variable_get('cron_key', 'drupal') != $cron_key) {
+  if (empty($cron_key) || variable_get('cron_key', 'backdrop') != $cron_key) {
     watchdog('apc', 'APC could not flush cache(s) because an invalid key was used.', array(), WATCHDOG_ERROR);
     return array(
       'success' => FALSE,
@@ -63,7 +63,7 @@ function apc_init() {
 
 /**
  * @file
- * This integrates the drupal APC cache module.
+ * This integrates the Backdrop APC cache module.
  */
 
 /**
@@ -94,8 +94,8 @@ function apc_shutdown() {
   }
 
   // Try not to break non-HTML pages.
-  if (function_exists('drupal_get_http_header')) {
-    $header = drupal_get_http_header('content-type');
+  if (function_exists('backdrop_get_http_header')) {
+    $header = backdrop_get_http_header('content-type');
     if ($header) {
       $formats = array('xml', 'javascript', 'json', 'plain', 'image', 'application', 'csv', 'x-comma-separated-values');
       foreach ($formats as $format) {
@@ -151,10 +151,10 @@ function apc_form_system_performance_settings_alter(&$form, $form_state) {
  */
 function apc_clear_user_cache() {
   if (apc_clear_cache('user')) {
-    drupal_set_message(t('Cleared APC user cache.'));
+    backdrop_set_message(t('Cleared APC user cache.'));
   }
   else {
-    drupal_set_message(t('Unable to clear APC user cache.'), 'error');
+    backdrop_set_message(t('Unable to clear APC user cache.'), 'error');
   }
 }
 
@@ -163,9 +163,9 @@ function apc_clear_user_cache() {
  */
 function apc_clear_opcode_cache() {
   if (apc_clear_cache()) {
-    drupal_set_message(t('Cleared APC opcode cache.'));
+    backdrop_set_message(t('Cleared APC opcode cache.'));
   }
   else {
-    drupal_set_message(t('Unable to clear APC opcode cache.'), 'error');
+    backdrop_set_message(t('Unable to clear APC opcode cache.'), 'error');
   }
 }
