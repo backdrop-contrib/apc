@@ -1,7 +1,7 @@
 <?php
 /**
  * @file
- * This integrates the drupal APC cache backend.
+ * This integrates the Backdrop APC cache backend.
  */
 
 // Create dummy functions to prevent fatal errors.
@@ -21,11 +21,11 @@ $apc_statistics = array();
 /**
  * APC cache implementation.
  *
- * This is Drupal's APC cache implementation. It uses Alternative PHP
+ * This is Backdrop's APC cache implementation. It uses Alternative PHP
  * Cache to store cached data. Each cache bin corresponds to a prefix of
  * the apc variables with the same name.
  */
-class DrupalAPCCache implements DrupalCacheInterface {
+class BackdropAPCCache implements BackdropCacheInterface {
   /**
    * @var string
    */
@@ -84,7 +84,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
 
   function __construct($bin) {
     $this->bin = $bin;
-    $this->drush = (drupal_is_cli() && function_exists('drush_log'));
+    $this->drush = (backdrop_is_cli() && function_exists('drush_log'));
 
     // First we determine the prefix from a setting.
     $prefix = self::getPrefixSettingForBin($this->bin);
@@ -101,11 +101,11 @@ class DrupalAPCCache implements DrupalCacheInterface {
     }
 
     // When we are in testing mode we add the test prefix.
-    if ($test_prefix = drupal_valid_test_ua()) {
+    if ($test_prefix = backdrop_valid_test_ua()) {
       $prefix = $test_prefix . '::' . $prefix;
     }
-    else if (isset($GLOBALS['drupal_test_info'])) {
-      $prefix = $GLOBALS['drupal_test_info']['test_run_id'] . '::' . $prefix;
+    else if (isset($GLOBALS['backdrop_test_info'])) {
+      $prefix = $GLOBALS['backdrop_test_info']['test_run_id'] . '::' . $prefix;
     }
 
     $this->prefix = $prefix;
@@ -161,7 +161,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
     // If enforcing a minimum cache lifetime, validate that the data is
     // currently valid for this user before we return it by making sure the cache
     // entry was created before the timestamp in the current session's cache
-    // timer. The cache variable is loaded into the $user object by _drupal_session_read()
+    // timer. The cache variable is loaded into the $user object by _backdrop_session_read()
     // in session.inc. If the data is permanent or we're not enforcing a minimum
     // cache lifetime always return the cached data.
     global $user;
@@ -317,7 +317,7 @@ class DrupalAPCCache implements DrupalCacheInterface {
       $args = array(
         'apc_drush_flush' => array(array(
           'clears' => self::$remoteClears,
-          'cron_key' => variable_get('cron_key', 'drupal'),
+          'cron_key' => variable_get('cron_key', 'backdrop'),
         )),
       );
       $uri = $base_url . '/xmlrpc.php';
