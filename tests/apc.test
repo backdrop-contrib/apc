@@ -107,13 +107,6 @@ class ApcCacheTestCase extends BackdropWebTestCase {
 }
 
 class ApcCacheSavingCase extends ApcCacheTestCase {
-  public static function getInfo() {
-    return array(
-      'name' => 'Cache saving test',
-      'description' => 'Check our variables are saved and restored the right way.',
-      'group' => 'APC'
-    );
-  }
 
   function setUp() {
     parent::setUp();
@@ -184,14 +177,6 @@ class ApcCacheSavingCase extends ApcCacheTestCase {
  */
 class ApcCacheGetMultipleUnitTest extends ApcCacheTestCase {
 
-  public static function getInfo() {
-    return array(
-      'name' => 'Fetching multiple cache items',
-      'description' => 'Confirm that multiple records are fetched correctly.',
-      'group' => 'APC',
-    );
-  }
-
   function setUp() {
     parent::setUp();
   }
@@ -229,13 +214,6 @@ class ApcCacheGetMultipleUnitTest extends ApcCacheTestCase {
  * Test cache clearing methods.
  */
 class ApcCacheClearCase extends ApcCacheTestCase {
-  public static function getInfo() {
-    return array(
-      'name' => 'Cache clear test',
-      'description' => 'Check our clearing is done the proper way.',
-      'group' => 'APC'
-    );
-  }
 
   function setUp() {
     $this->default_value = $this->randomName(10);
@@ -353,13 +331,6 @@ class ApcCacheClearCase extends ApcCacheTestCase {
  * Test cache_is_empty() function.
  */
 class ApcCacheIsEmptyCase extends ApcCacheTestCase {
-  public static function getInfo() {
-    return array(
-      'name' => 'Cache emptiness test',
-      'description' => 'Check if a cache bin is empty after performing clear operations.',
-      'group' => 'APC'
-    );
-  }
 
   function setUp() {
     $this->default_value = $this->randomName(10);

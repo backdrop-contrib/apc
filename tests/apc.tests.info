@@ -1,0 +1,23 @@
+[ApcCacheSavingCase]
+name = Cache saving test
+description = Check our variables are saved and restored the right way
+group = APC
+file = apc.test
+
+[ApcCacheGetMultipleUnitTest]
+name = Fetching multiple cache items
+description = Confirm that multiple records are fetched correctly
+group = APC
+file = apc.test
+
+[ApcCacheClearCase]
+name = Cache clear test
+description = Check our clearing is done the proper way
+group = APC
+file = apc.test
+
+[ApcCacheIsEmptyCase]
+name = Cache emptiness test
+description = Check if a cache bin is empty after performing clear operations
+group = APC
+file = apc.test
