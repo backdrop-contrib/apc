@@ -66,6 +66,10 @@ Visit your site to see if it's still working!
 
 To be able to test this module, open *core/includes/cache.inc* and search for `settings_get('cache_default_class', 'BackdropDatabaseCache')`. and change this to BackdropAPCCache. This is because the `$settings['']` array in *settings.php* is not always loaded properly.
 
+## License
+
+This project is GPL v2 software. See the LICENSE.txt file in this directory for complete text.
+
 ## Credits
 
 Drupal module authors and maintainers:
