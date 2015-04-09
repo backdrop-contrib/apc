@@ -173,7 +173,7 @@ class BackdropAPCCache implements BackdropCacheInterface {
     return $cache;
   }
 
-  function getMultiple(&$cids) {
+  function getMultiple(array &$cids) {
     if (!$cids) {
       return array();
     }
