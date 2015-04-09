@@ -1,6 +1,6 @@
 ## Backdrop APC
 
-This is an attempt to port Drupal's [APC Module](https://drupal.org/project/apc "APC - Alternative PHP Cache") to Backdrop CMS.
+This is a port of Drupal's [APC Module](https://drupal.org/project/apc "APC - Alternative PHP Cache") to [Backdrop CMS](https://backdropcms.org).
 
 ## Description
 
@@ -68,7 +68,7 @@ To be able to test this module, open *core/includes/cache.inc* and search for `v
 
 ## Credits
 
-Drupal module maintainers:
+Drupal module authors and maintainers:
 
 * Drupal 7 - [R. Muilwijk](https://drupal.org/user/159883) (Raymond Muilwijk)
 * Drupal 5 & 6 - [slantview](https://www.drupal.org/user/73183) (Steve Rude)
