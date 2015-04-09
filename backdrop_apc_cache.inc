@@ -337,4 +337,19 @@ class BackdropAPCCache implements BackdropCacheInterface {
       }
     }
   }
+  /**
+   * Implements BackdropCacheInterface::delete().
+   */
+  function delete($cid) {
+  }
+  /**
+   * Implements BackdropCacheInterface::deleteMultiple().
+   */
+  function deleteMultiple(array $cids) {
+  }
+  /**
+   * Implements BackdropCacheInterface::garbageCollection().
+   */
+  function garbageCollection() {
+  }
 }
