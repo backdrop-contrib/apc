@@ -241,7 +241,7 @@ class BackdropAPCCache implements BackdropCacheInterface {
    *
    * @param string $prefix
    */
-  protected function deletePrefix($prefix) {
+  function deletePrefix($prefix) {
     if (class_exists('APCIterator')) {
       $iterator = new APCIterator('user', '/^\Q' . $this->binKey() . $prefix . '\E/', APC_ITER_KEY);
       foreach ($iterator as $key => $data) {
