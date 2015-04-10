@@ -55,7 +55,7 @@ class BackdropAPCCache implements BackdropCacheInterface {
    *   Can be an empty string, if no prefix set.
    */
   protected static function getPrefixSettingForBin($bin) {
-    $prefixes = variable_get('cache_prefix', '');
+    $prefixes = settings_get('cache_prefix', '');
 
     if (is_string($prefixes)) {
       // Variable can be a string, which then considered as a default behavior.
@@ -165,7 +165,7 @@ class BackdropAPCCache implements BackdropCacheInterface {
     // in session.inc. If the data is permanent or we're not enforcing a minimum
     // cache lifetime always return the cached data.
     global $user;
-    if ($cache->expire != CACHE_PERMANENT && variable_get('cache_lifetime', 0) && (isset($user->cache) && $user->cache > $cache->created)) {
+    if ($cache->expire != CACHE_PERMANENT && config_get('system.core','page_cache_maximum_age', 0) && (isset($user->cache) && $user->cache > $cache->created)) {
       // This cache data is too old and thus not valid for us, ignore it.
       return FALSE;
     }
@@ -222,8 +222,8 @@ class BackdropAPCCache implements BackdropCacheInterface {
         break;
 
       case CACHE_TEMPORARY:
-        if (variable_get('cache_lifetime', 0) > 0) {
-          $set_result = apc_store($this->key($cid), $cache, variable_get('cache_lifetime', 0));
+        if (config_get('system.core','page_cache_maximum_age', 0) > 0) {
+          $set_result = apc_store($this->key($cid), $cache, config_get('system.core','page_cache_maximum_age', 0));
         }
         else {
           $set_result = apc_store($this->key($cid), $cache);
@@ -317,7 +317,7 @@ class BackdropAPCCache implements BackdropCacheInterface {
       $args = array(
         'apc_drush_flush' => array(array(
           'clears' => self::$remoteClears,
-          'cron_key' => variable_get('cron_key', 'backdrop'),
+          'cron_key' => state_get('cron_key', 'backdrop'),
         )),
       );
       $uri = $base_url . '/xmlrpc.php';
