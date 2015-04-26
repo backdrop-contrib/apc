@@ -1,4 +1,5 @@
 name = APC - Alternative PHP Cache
+type = module
 description = Enables the Alternative PHP Cache.
 package = Performance and scalability
 version = "1.x-1.x"
